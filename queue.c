@@ -1,163 +1,57 @@
 #include "queue.h"
 
+/* ================================ */
+
+struct _queue_node {
+    Data data;
+
+    struct _queue_node* next;
+};
+
+struct _queue {
+    Node head;
+    Node tail;
+
+    ssize_t size;
+
+    void (*fptr_destroy)(Data data);
+    void (*fptr_print)(Data data);
+};
+
 /* ================================================================ */
 
-static Node* Node_new(const void* data) {
-    /*
-        * Allocates a container for queue data.
-        *
-        * Returns a pointer to the container if successful, NULL otherwise.
-    */
-
-    Node* node = NULL;
+static Node Node_new(const Data data) {
+    Node node = NULL;
 
     if (data != NULL) {
-        if ((node = (Node*) malloc(sizeof(Node))) != NULL) {
-            node->data = (void*) data;
+        if ((node = (Node) malloc(sizeof(struct _queue_node))) != NULL) {
+            node->data = (Data) data;
             node->next = NULL;
         }
         else {
-            fprintf(stderr, "error: %s\n", strerror(errno));
+            warn_with_sys_msg("Memory allocation failure");
         }
+    }
+    else {
+        warn_with_user_msg(__func__, "data can't be NULL");
     }
 
     return node;
 }
 
-/* ================================================================ */
+static Data Node_destroy(Node* node) {
+    Data data = NULL;
 
-extern Queue* Queue_new(void (*destroy)(void* data)) {
-    /*
-        * Allocates a new queue.
-        * The `destroy` argument provides a way to free queue data when
-        * `Queue_destroy` is called.
-    */
+    if ((node != NULL) && (*node != NULL)) {
+        data = (*node)->data;
+        (*node)->next = NULL;
 
-    Queue* q = NULL;
+        /* Clear memory*/
+        memset(*node, 0, sizeof(struct _queue_node));
+        /* Deallocate memory */
+        free(*node);
 
-    if ((q = (Queue*) malloc(sizeof(Queue))) != NULL) {
-        q->head = q->tail = NULL;
-        q->size = 0;
-
-        q->destroy = destroy;
-    }
-    else {
-        fprintf(stderr, "error: %s\n", strerror(errno));
-    }
-
-    return q;
-}
-
-/* ================================================================ */
-
-void Queue_destroy(Queue** q) {
-    /*
-        * Destroys a queue. 
-    */
-
-    void* data = NULL;
-
-    if ((q != NULL) && (*q != NULL)) {
-        if ((*q)->destroy != NULL) {
-            
-        }
-        while ((*q)->size > 0) {
-            /* Free the node */
-            data = Queue_dequeue(*q);
-
-            if ((*q)->destroy != NULL) {
-                (*q)->destroy(data);
-            }
-        }
-        /* Clear sensitive data */
-        memset(*q, 0, sizeof(Queue));
-        /* Free a queue */
-        free(*q);
-
-        *q = NULL;
-    }
-
-    return ;
-}
-
-/* ================================================================ */
-
-int Queue_enqueue(Queue* q, const void* data) {
-    /* 
-        * Enqueues an element at the tail of the queue specified by `q`. 
-        * The new element contains a pointer to data, so the memory referenced by data
-        * should remain valid as long as the element remains in the queue. 
-        * 
-        * Returns 1 if enqueuing the element is successful, or 0 otherwise.
-    */
-
-    int status_code = 0;
-    /* Node to insert */
-    Node* node = NULL;
-
-    if (q != NULL) {
-        if ((node = Node_new(data)) != NULL) {
-            switch (q->size) {
-                /* Special case */
-                case 0:
-                    q->head = q->tail = node;
-
-                    break ;
-
-                default:
-                    q->tail->next = node;
-                    q->tail = node;
-
-                    break ;
-            }
-
-            q->size++;
-            status_code = 1;
-        }
-    }
-
-    return status_code;
-}
-
-/* ================================================================ */
-
-void* Queue_dequeue(Queue* q) {
-    /*
-        * Dequeues an element from the head of the queue specified by queue.
-        * Upon return, data points to the data stored in the element that was
-        * dequeued.
-        * 
-        * Returns a pointer to data of the dequeued element if successful, or NULL otherwise.
-    */
-
-    void* data = NULL;
-    /* Node to be freed */
-    Node* node = NULL;
-
-    if (q != NULL) {
-        if (q->size > 0) {
-            data = q->head->data;
-            node = q->head;
-
-            switch (q->size) {
-                /* Special case */
-                case 1:
-                    q->head = q->tail = NULL;
-
-                    break ;
-
-                default:
-                    q->head = q->head->next;
-
-                    break ;
-            }
-            /* Clear sensitive data */
-            memset(node, 0, sizeof(Node));
-            /* Free a node */
-            free(node);
-
-            q->size--;
-        }
+        *node = NULL;
     }
 
     return data;
@@ -165,13 +59,171 @@ void* Queue_dequeue(Queue* q) {
 
 /* ================================================================ */
 
-void* Queue_peek(const Queue* q) {
-    /*
-        * Provides a way to inspect the element at the head of a queue
-        * without actually dequeuing it.
-    */
+Queue Queue_new(void (*fptr_destroy)(Data data), void (*fptr_print)(Data data)) {
+    Queue queue = NULL;
 
-    return ( ((q != NULL) && (q->size > 0)) ? q->head->data : NULL );
+    if ((queue = (Queue) malloc(sizeof(struct _queue))) != NULL) {
+        queue->size = 0;
+        queue->head = queue->tail = NULL;
+
+        queue->fptr_destroy = fptr_destroy;
+        queue->fptr_print = fptr_print;
+    }
+    else {
+        warn_with_user_msg(__func__, "data can't be NULL");
+    }
+
+    return queue;
 }
 
-/* ================================================================ */
+/* ================================ */
+
+void Queue_print(const Queue queue, void (*fptr_print)(const Data)) {
+    void (*alt_fptr_print)(const Data) = NULL;
+
+    if (queue != NULL) {
+        if ((queue->fptr_print == NULL) && (fptr_print == NULL)) {
+            warn_with_user_msg(__func__, "there is no associated `print` function with the list");
+
+            return ;
+        }
+
+        printf("[");
+
+        if (queue->size > 0) {
+            alt_fptr_print = (queue->fptr_print == NULL) ? fptr_print : queue->fptr_print;
+
+            for (Node node = queue->head; node != NULL; node = node->next) {
+                alt_fptr_print(node->data);
+
+                if (node->next != NULL) {
+                    printf(" -> ");
+                }
+            }
+        }
+
+        printf("]\n");
+    }
+    else {
+        warn_with_user_msg(__func__, "stack can't be NULL");
+    }
+
+    return ;
+}
+
+/* ================================ */
+
+void Queue_destroy(Queue* queue) {
+    Data data = NULL;
+
+    if ((queue != NULL) && (*queue) != NULL) {
+        while ((*queue)->size > 0) {
+            data = Queue_dequeue(*queue);
+
+            if ((*queue)->fptr_destroy != NULL) {
+                (*queue)->fptr_destroy(data);
+            }
+        }
+
+        /* Clear memory */
+        memset(*queue, 0, sizeof(struct _queue));
+        /* Dealloce memory */
+        free(*queue);
+
+        *queue = NULL;
+    }
+    else {
+        warn_with_user_msg(__func__, "*queue can't be NULL");
+    }
+
+    return ;
+}
+
+/* ================================ */
+
+int8_t Queue_enqueue(Queue queue, const Data data) {
+    int8_t result = 0;
+    Node node = NULL;
+
+    if (queue != NULL) {
+        if ((node = Node_new(data)) != NULL) {
+            switch (queue->size) {
+                case 0:
+                    queue->tail = queue->head = node;
+
+                    break ;
+
+                default:
+                    queue->tail->next = node;
+                    queue->tail = node;
+
+                    break ;
+            }
+
+            queue->size++;
+            result = 1;
+        }
+    }
+    else {
+        warn_with_user_msg(__func__, "queue can't be NULL");
+    }
+
+    return result;
+}
+
+/* ================================ */
+
+Data Queue_dequeue(Queue queue) {
+    Node node = NULL;
+    Data data = NULL;
+
+    if (queue != NULL) {
+        if (queue->size > 0) {
+            node = queue->head;
+
+            switch (queue->size) {
+                case 1:
+                    queue->head = queue->tail = NULL;
+
+                    break ;
+
+                default:
+                    queue->head = node->next;
+
+                    break ;
+            }
+
+            data = Node_destroy(&node);
+        }
+
+        queue->size--;
+    }
+    else {
+        warn_with_user_msg(__func__, "queue can't be NULL");
+    }
+
+    return data;
+}
+
+/* ================================ */
+
+ssize_t Queue_get_size(const Queue queue) {
+    return (queue != NULL) ? queue->size : -1;
+}
+
+/* ================================ */
+
+Data Queue_peek(const Queue queue) {
+    Data data = NULL;
+
+    if (queue != NULL) {
+        if (queue->size > 0) {
+            data = queue->head->data;
+        }
+    }
+    else {
+        warn_with_user_msg(__func__, "queue can't be NULL");
+    }
+
+    return data;
+}
