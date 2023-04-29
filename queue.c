@@ -70,7 +70,7 @@ Queue Queue_new(void (*fptr_destroy)(Data data), void (*fptr_print)(Data data)) 
         queue->fptr_print = fptr_print;
     }
     else {
-        warn_with_user_msg(__func__, "data can't be NULL");
+        warn_with_sys_msg("Memory allocation failure");
     }
 
     return queue;
