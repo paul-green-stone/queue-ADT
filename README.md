@@ -34,10 +34,10 @@ The `Queue_new` function allocates a new instance of a queue data type.
 
 | Type | Description |
 | ---- | ----------- |
-| `void (*fptr_destroy)(void*)` | Provides a way to free dynamically allocated data when `Queue_destroy` is called. If the queue contains data dynamically allocated using `malloc`, `fptr_destroy` should be set to `free` to free the data as the stack is destroyed. For structured data containing several dynamically allocated members, destroy should be set to a user-defined function that calls `free` for each dynamically allocated member as well as for the structure itself. For a stack containing data that should not be freed, destroy should be set to *NULL* |
-| `void (*fptr_print)(const Data)` | Provides a default way to display content of the stack when `Queue_display` is invoked. [How to write `print` functions](#how-to-write-print-functions) |
+| `void (*fptr_destroy)(void*)` | Provides a way to free dynamically allocated data when `Queue_destroy` is called. If the queue contains data dynamically allocated using `malloc`, `fptr_destroy` should be set to `free` to free the data as the queue is destroyed. For structured data containing several dynamically allocated members, destroy should be set to a user-defined function that calls `free` for each dynamically allocated member as well as for the structure itself. For a queue containing data that should not be freed, destroy should be set to *NULL* |
+| `void (*fptr_print)(const Data)` | Provides a default way to display content of the queue when `Queue_display` is invoked. [How to write `print` functions](#how-to-write-print-functions) |
 
-**Return value**: `List` if creating a new stack is successful, or `NULL` otherwise.
+**Return value**: `Queue` if creating a new queue is successful, or `NULL` otherwise.
 
 ### Queue_print
 
@@ -45,12 +45,12 @@ The `Queue_new` function allocates a new instance of a queue data type.
 void Queue_print(const Queue queue, void (*fptr_print)(const Data));
 ```
 
-The `Queue_print` function outputs content of the stack. The `fptr_print` argument is a callback function that is called on every node while traversng the stack. If `fptr_print` is NULL, the `fptr_print` function specified in `Queue_new` is used.
+The `Queue_print` function outputs content of the queue. The `fptr_print` argument is a callback function that is called on every node while traversng the queue. If `fptr_print` is NULL, the `fptr_print` function specified in `Queue_new` is used.
 
 | Type | Description |
 | ---- | ----------- |
 | `const Queue queue` | The queue to be displayed |
-| `void (*fptr_print)(const Data)` | The callback function to handle data in a node |
+| `void (*fptr_print)(const Data)` | The callback function to print data in a node |
 
 **Return value**: None
 
@@ -95,7 +95,7 @@ The `Queue_dequeue` operation dequeues an element from the head of a queue.
 | ---- | ----------- |
 | `Queue queue` | A queue to dequeue from |
 
-**Return value**: `Data` if a stack is not empty, or `NULL` otherwise.
+**Return value**: `Data` if a queue is not empty, or `NULL` otherwise.
 
 ### Queue_peek
 
@@ -121,15 +121,15 @@ The `Queue_size` operation returns the size of the queue.
 | ---- | ----------- |
 | `const Queue queue` | A queue which size to get |
 
-**Return value**: number of elements in the stack, or -1 if stack is `NULL`.
+**Return value**: number of elements in the queue, or -1 if queue is `NULL`.
 
 ## Examples
 
 ### How to write `print` functions
 
-The `fptr_print` argument in the `Queue_print` and `Queue_new` functions is a callback that handles data in a stack node.
+The `fptr_print` argument in the `Queue_print` and `Queue_new` functions is a callback that handles data in a queue node.
 
-One must assume that a stack is homogeneous (e.g., contains data of the same type). For example, suppose we have a stack of integers, then we might write the function:
+One must assume that a queue is homogeneous (e.g., contains data of the same type). For example, suppose we have a queue of integers, then we might write the function:
 
 ```C
 /* ... */
@@ -139,21 +139,6 @@ void print_int(Data data) {
 ```
 
 Keep in mind that `fptr_print` expects its argument to be a type of `Data`.
-
-### How to write `match` functions
-
-A `fptr_match` function is a callback that is passed as an argument to another function. In order to write a *match* function, one must assume that a list is *homogeneous* (i.e., contains data of the same type). According to the API, the `fptr_match` function should return *0* if two elements are the same:
-
-```C
-/* just an example of the implementation of the `fptr_match` callback function */
-int match_int(Data data_1, Data data_2) {
-    return (*((int*) x) - *((int*) y));
-}
-```
-
-The `fptr_match` function takes two arguments of type `Data`: `data_1` and `data_2`. The `data_1` parameter takes data of the list node, and `data_2` is data to compare with. Keep in mind that a match function accepts `void*` pointers, and you cast/dereference them to the appropriate type in a `callback` function body.
-
-If a list contains complex data (e.g., structs, for example), the user must decide how to compare them.
 
 ## Resources
 
